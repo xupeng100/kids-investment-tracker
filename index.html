@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏆 小朋友投资打卡表</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f0f4f8;
+    --card-bg: #ffffff;
+    --text: #1a202c;
+    --text-secondary: #718096;
+    --border: #e2e8f0;
+    --primary: #4299e1;
+    --primary-light: #ebf8ff;
+    --success: #48bb78;
+    --success-bg: #f0fff4;
+    --danger: #fc8181;
+    --danger-bg: #fff5f5;
+    --warning: #ecc94b;
+    --warning-bg: #fffff0;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    padding: 20px;
+    min-height: 100vh;
+  }
+
+  /* ===== Header ===== */
+  .header {
+    max-width: 1200px; margin: 0 auto 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: var(--radius); padding: 20px 28px;
+    color: white;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 12px;
+  }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: 1px; }
+  .header h1 span { font-size: 26px; }
+  .header-stats { display: flex; gap: 20px; }
+  .header-stat { text-align: center; }
+  .header-stat .value { font-size: 20px; font-weight: 700; }
+  .header-stat .label { font-size: 12px; opacity: 0.85; }
+  .header-stat .value.positive { color: #9ae6b4; }
+
+  /* ===== Container ===== */
+  .container {
+    max-width: 1200px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+  }
+
+  /* ===== Project Card ===== */
+  .project-card {
+    background: var(--card-bg); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow: hidden;
+    transition: box-shadow 0.2s;
+  }
+  .project-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+
+  .project-header {
+    padding: 14px 18px 10px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .project-title { font-size: 17px; font-weight: 700; }
+  .project-actions { display: flex; gap: 6px; }
+
+  .btn-icon {
+    width: 32px; height: 32px;
+    border: none; border-radius: 6px; cursor: pointer;
+    font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg); color: var(--text-secondary);
+    transition: all 0.15s;
+  }
+  .btn-icon:hover { background: var(--border); }
+
+  .project-meta {
+    padding: 0 18px 10px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px;
+    font-size: 13px; color: var(--text-secondary);
+  }
+  .project-meta .value { font-weight: 600; color: var(--text); }
+
+  /* ===== Progress ===== */
+  .progress-section { padding: 0 18px 10px; }
+  .progress-header {
+    display: flex; justify-content: space-between;
+    font-size: 13px; margin-bottom: 3px;
+  }
+  .progress-bar {
+    height: 7px; background: var(--border); border-radius: 4px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; border-radius: 4px; transition: width 0.4s ease;
+    background: linear-gradient(90deg, var(--primary), #667eea);
+  }
+  .progress-fill.warning { background: linear-gradient(90deg, var(--warning), #f6ad55); }
+  .progress-fill.danger { background: linear-gradient(90deg, var(--danger), #fc8181); }
+
+  /* ===== Makeup ===== */
+  .makeup-status {
+    padding: 0 18px 10px;
+    display: flex; align-items: center; gap: 6px; font-size: 13px;
+  }
+  .makeup-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
+  }
+  .makeup-badge.ok { background: var(--success-bg); color: #276749; }
+  .makeup-badge.warn { background: var(--warning-bg); color: #975a16; }
+  .makeup-badge.danger { background: var(--danger-bg); color: #9b2c2c; }
+
+  /* ===== Calendar Grid ===== */
+  .calendar-section { padding: 0 10px 10px; }
+  .calendar-header {
+    display: flex; padding: 0 4px 4px;
+    font-size: 11px; color: var(--text-secondary);
+    border-bottom: 1px solid var(--border); margin-bottom: 6px;
+  }
+  .calendar-header .weekday { flex: 1; text-align: center; font-weight: 600; }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+
+  .day-cell {
+    aspect-ratio: 1;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer; font-size: 11px; font-weight: 600;
+    transition: all 0.12s; user-select: none;
+    min-height: 40px;
+  }
+  .day-cell .day-num { font-size: 12px; font-weight: 700; line-height: 1.2; }
+  .day-cell .day-status { font-size: 13px; line-height: 1; }
+
+  .day-cell.completed {
+    background: var(--success-bg); color: #276749; border-color: #c6f6d5;
+  }
+  .day-cell.completed:hover {
+    background: #e6ffed; border-color: var(--success); transform: scale(1.06);
+  }
+  .day-cell.failed {
+    background: var(--danger-bg); color: #9b2c2c; border-color: #fed7d7;
+  }
+  .day-cell.failed:hover {
+    background: #ffe0e0; border-color: var(--danger); transform: scale(1.06);
+  }
+  .day-cell.future {
+    background: #f7fafc; color: #cbd5e0; border-color: #edf2f7; cursor: default;
+  }
+  .day-cell.today {
+    border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-light);
+  }
+
+  /* ===== Earnings ===== */
+  .earnings-section {
+    padding: 0 18px 14px;
+    border-top: 1px solid var(--border); margin-top: 2px; padding-top: 10px;
+  }
+  .earnings-row {
+    display: flex; justify-content: space-between;
+    font-size: 13px; padding: 2px 0;
+  }
+  .earnings-row .label { color: var(--text-secondary); }
+  .earnings-row .value { font-weight: 600; }
+  .earnings-row.total {
+    border-top: 1px solid var(--border); margin-top: 4px;
+    padding-top: 5px; font-size: 14px;
+  }
+  .earnings-row.total .value { color: var(--primary); font-size: 16px; }
+
+  /* ===== Unconfigured state ===== */
+  .card-unconfigured {
+    padding: 40px 20px; text-align: center; color: var(--text-secondary);
+  }
+  .card-unconfigured .big-emoji { font-size: 36px; margin-bottom: 8px; }
+  .card-unconfigured p { font-size: 14px; margin-bottom: 12px; }
+  .card-unconfigured button {
+    padding: 8px 20px; background: var(--primary); color: white;
+    border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600;
+    cursor: pointer; font-family: var(--font);
+  }
+  .card-unconfigured button:hover { background: #3182ce; }
+
+  /* ===== Modal ===== */
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: none; align-items: center; justify-content: center;
+    z-index: 1000; padding: 20px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--card-bg); border-radius: var(--radius);
+    padding: 28px; width: 100%; max-width: 440px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: modalIn 0.2s ease;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .modal h2 { font-size: 19px; margin-bottom: 18px; }
+  .modal .form-group { margin-bottom: 14px; }
+  .modal .form-group label {
+    display: block; font-size: 13px; font-weight: 600;
+    color: var(--text-secondary); margin-bottom: 3px;
+  }
+  .modal .form-group input,
+  .modal .form-group select {
+    width: 100%; padding: 9px 12px;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 14px; font-family: var(--font); background: white;
+    transition: border-color 0.15s;
+  }
+  .modal .form-group input:focus,
+  .modal .form-group select:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+  }
+  .modal .form-group .hint {
+    font-size: 12px; color: var(--text-secondary); margin-top: 3px;
+  }
+  .modal .form-group .hint.warn { color: #c05621; }
+  .modal .form-group .hint.danger { color: #c53030; }
+  .modal .form-actions {
+    display: flex; gap: 10px; margin-top: 18px;
+  }
+  .modal .form-actions button {
+    flex: 1; padding: 10px; border: none;
+    border-radius: var(--radius-sm); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; font-family: var(--font);
+  }
+  .modal .btn-primary { background: var(--primary); color: white; }
+  .modal .btn-primary:hover { background: #3182ce; }
+  .modal .btn-secondary { background: var(--bg); color: var(--text); }
+  .modal .btn-secondary:hover { background: var(--border); }
+  .modal .btn-danger { background: var(--danger-bg); color: #9b2c2c; display: none; }
+  .modal .btn-danger:hover { background: #fed7d7; }
+
+  /* ===== Empty & Legend ===== */
+  .empty-state {
+    grid-column: 1 / -1; text-align: center;
+    padding: 60px 20px; color: var(--text-secondary);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state h3 { font-size: 18px; margin-bottom: 8px; color: var(--text); }
+  .empty-state p { font-size: 14px; max-width: 400px; margin: 0 auto 16px; }
+  .empty-state button {
+    padding: 10px 28px; background: var(--primary); color: white;
+    border: none; border-radius: var(--radius-sm);
+    font-size: 15px; cursor: pointer; font-family: var(--font); font-weight: 600;
+  }
+  .empty-state button:hover { background: #3182ce; }
+
+  .legend {
+    max-width: 1200px; margin: 12px auto 0;
+    display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+    font-size: 12px; color: var(--text-secondary);
+  }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-dot {
+    width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--border);
+  }
+  .legend-dot.completed { background: var(--success-bg); border-color: #c6f6d5; }
+  .legend-dot.failed { background: var(--danger-bg); border-color: #fed7d7; }
+  .legend-dot.future { background: #f7fafc; border-color: #edf2f7; }
+  .legend-dot.today-dot { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+
+  .footer-actions {
+    max-width: 1200px; margin: 16px auto 0; text-align: center;
+  }
+  .footer-actions button {
+    padding: 8px 20px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); background: var(--card-bg);
+    color: var(--text-secondary); font-size: 13px; cursor: pointer;
+    font-family: var(--font); transition: all 0.15s;
+  }
+  .footer-actions button:hover { background: var(--danger-bg); color: #9b2c2c; border-color: var(--danger); }
+
+  /* ===== Toast ===== */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #2d3748; color: white;
+    padding: 10px 20px; border-radius: 8px; font-size: 14px;
+    opacity: 0; transition: all 0.3s; z-index: 2000; pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 900px) {
+    .container { grid-template-columns: 1fr; gap: 14px; }
+    .header { flex-direction: column; text-align: center; padding: 18px; }
+    .header h1 { font-size: 19px; }
+  }
+  @media (max-width: 480px) {
+    body { padding: 10px; }
+    .project-header { padding: 12px 14px 8px; }
+    .project-meta { padding: 0 14px 8px; font-size: 12px; }
+    .calendar-section { padding: 0 6px 8px; }
+    .day-cell { min-height: 34px; font-size: 10px; }
+    .day-cell .day-num { font-size: 11px; }
+    .day-cell .day-status { font-size: 11px; }
+    .modal { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1><span>🏆</span> 小朋友投资打卡表</h1>
+    <div style="font-size:13px;opacity:0.85;margin-top:3px;">打卡赚收益 · 养成好习惯</div>
+  </div>
+  <div class="header-stats" id="headerStats">
+    <div class="header-stat">
+      <div class="value" id="totalInvestment">¥0</div>
+      <div class="label">总投资</div>
+    </div>
+    <div class="header-stat">
+      <div class="value positive" id="totalEarnings">¥0</div>
+      <div class="label">总收益</div>
+    </div>
+    <div class="header-stat">
+      <div class="value" id="totalReturn">¥0</div>
+      <div class="label">总回报</div>
+    </div>
+  </div>
+</div>
+
+<div class="container" id="appContainer">
+  <div class="empty-state" id="emptyState">
+    <div class="icon">🚀</div>
+    <h3>还没有投资项目</h3>
+    <p>点击下方按钮，为小朋友创建好习惯投资项目吧！每个项目投资 ¥50，坚持打卡赚收益。</p>
+    <button onclick="showAddProjectModal()">➕ 创建投资项目</button>
+  </div>
+</div>
+
+<div class="legend" id="legendArea" style="display:none;">
+  <div class="legend-item"><span class="legend-dot completed"></span> 已完成（点击变❌）</div>
+  <div class="legend-item"><span class="legend-dot failed"></span> 未完成（点击恢复✅）</div>
+  <div class="legend-item"><span class="legend-dot today-dot"></span> 今天</div>
+  <div class="legend-item"><span class="legend-dot future"></span> 未来日期</div>
+</div>
+
+<div class="footer-actions" id="footerActions" style="display:none;">
+  <button onclick="showAddProjectModal()" style="background:var(--primary);color:white;border:none;padding:8px 24px;font-weight:600;">➕ 添加项目</button>
+  <button onclick="resetAllData()" style="margin-left:8px;">🗑️ 重置所有数据</button>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h2 id="modalTitle">项目设置</h2>
+    <div class="form-group">
+      <label>项目名称</label>
+      <input type="text" id="editName" placeholder="如：先写作业">
+    </div>
+    <div class="form-group">
+      <label>起始日期</label>
+      <input type="date" id="editStartDate">
+      <div class="hint">项目开始的第一天</div>
+    </div>
+    <div class="form-group">
+      <label>投资时长</label>
+      <select id="editDuration" onchange="updateCompletedHint()">
+        <option value="14">14 天（收益率 20%，可补打卡 2 次）</option>
+        <option value="30">30 天（收益率 50%，可补打卡 4 次）</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>投资金额（元）</label>
+      <input type="number" id="editAmount" value="50" min="1" step="1">
+    </div>
+    <div class="form-group">
+      <label>已完成的打卡天数</label>
+      <input type="number" id="editCompletedDays" value="0" min="0" step="1" onchange="updateCompletedHint()" oninput="updateCompletedHint()">
+      <div class="hint" id="completedHint">设置起始日至今，已完成的天数</div>
+    </div>
+    <div class="form-group">
+      <label>已失败的打卡次数</label>
+      <input type="number" id="editFailedCount" value="0" min="0" step="1" onchange="updateCompletedHint()" oninput="updateCompletedHint()">
+      <div class="hint" id="failedHint">设置起始日至今，未完成的天数</div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="closeModal()">取消</button>
+      <button class="btn-danger" id="deleteBtn">删除项目</button>
+      <button class="btn-primary" onclick="saveProject()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== Constants =====
+const STORAGE_KEY = 'kids_investment_tracker_v2';
+const PROJECT_IDS = ['homework', 'jumpRope', 'milk'];
+const PROJECT_INFO = {
+  homework: { name: '先写作业', emoji: '📚', order: 0 },
+  jumpRope: { name: '跳绳', emoji: '🏃', order: 1 },
+  milk: { name: '喝牛奶', emoji: '🥛', order: 2 }
+};
+const PROJECT_DEFAULTS = {
+  homework: { name: '先写作业', amount: 50, duration: 30, startDate: '', completedDays: 0, failedCount: 0, records: {} },
+  jumpRope: { name: '跳绳', amount: 50, duration: 30, startDate: '', completedDays: 0, failedCount: 0, records: {} },
+  milk: { name: '喝牛奶', amount: 50, duration: 30, startDate: '', completedDays: 0, failedCount: 0, records: {} }
+};
+
+let appData = null;
+let editingId = null;
+
+// ===== Date Utilities =====
+function formatDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+function todayStr() { return formatDate(new Date()); }
+function addDays(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return formatDate(d);
+}
+function dateDiff(a, b) {
+  return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / (1000 * 60 * 60 * 24));
+}
+
+// ===== Data Management =====
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      appData = JSON.parse(raw);
+      // Ensure all project keys exist
+      PROJECT_IDS.forEach(id => {
+        if (!appData[id]) {
+          appData[id] = JSON.parse(JSON.stringify(PROJECT_DEFAULTS[id]));
+        }
+        if (!appData[id].records) appData[id].records = {};
+      });
+      return true;
+    }
+  } catch(e) { console.warn('Load error:', e); }
+  appData = null;
+  return false;
+}
+
+function saveData() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); }
+  catch(e) { console.error('Save error:', e); }
+}
+
+// ===== Project Helpers =====
+function getDurationInfo(duration) {
+  if (duration === 14) return { roi: 0.2, makeups: 2 };
+  return { roi: 0.5, makeups: 4 };
+}
+
+function getProjectDates(proj) {
+  if (!proj.startDate) return [];
+  const total = parseInt(proj.duration) || 30;
+  return Array.from({ length: total }, (_, i) => addDays(proj.startDate, i));
+}
+
+function getDayStatus(proj, dateStr) {
+  if (proj.records && proj.records[dateStr] !== undefined) {
+    return proj.records[dateStr];
+  }
+  if (dateStr > todayStr()) return 'future';
+  return 'completed'; // Default: past dates are completed
+}
+
+/**
+ * Rebuild records from manual settings (completedDays / failedCount).
+ * Past dates are partitioned: first `failedCount` → failed, next `completedDays` → completed.
+ * Remaining past dates (beyond completedDays+failedCount) have no explicit record,
+ * so getDayStatus will return 'completed' for them.
+ * Future dates are untouched.
+ */
+function rebuildRecordsFromManual(proj) {
+  if (!proj.records) proj.records = {};
+  const dates = getProjectDates(proj);
+  const today = todayStr();
+  const manualCompleted = parseInt(proj.completedDays) || 0;
+  const manualFailed = parseInt(proj.failedCount) || 0;
+  const totalManual = manualCompleted + manualFailed;
+
+  // Clear only past dates' records
+  dates.forEach(d => {
+    if (d <= today) delete proj.records[d];
+  });
+
+  // Filter past dates
+  const pastDates = dates.filter(d => d <= today);
+
+  // Set failed days (earliest dates in the range)
+  for (let i = 0; i < manualFailed && i < pastDates.length; i++) {
+    proj.records[pastDates[i]] = 'failed';
+  }
+  // Set completed days
+  for (let i = manualFailed; i < totalManual && i < pastDates.length; i++) {
+    proj.records[pastDates[i]] = 'completed';
+  }
+}
+
+function getProjectStats(proj) {
+  const empty = { total:0, completed:0, failed:0, future:0, progress:0, doneDays:0,
+    allowedMakeups:0, remainingMakeups:0, isOvershoot:false, isOngoing:true,
+    amount:0, roi:0, earnings:0, returnAmount:0 };
+
+  if (!proj || !proj.startDate) return empty;
+
+  const dates = getProjectDates(proj);
+  const info = getDurationInfo(parseInt(proj.duration) || 30);
+  const today = todayStr();
+
+  let completed = 0, failed = 0, future = 0;
+  dates.forEach(d => {
+    const s = getDayStatus(proj, d);
+    if (s === 'completed') completed++;
+    else if (s === 'failed') failed++;
+    else if (s === 'future') future++;
+  });
+
+  const total = dates.length;
+  const doneDays = total - future;
+  const progress = doneDays > 0 ? Math.round((completed / doneDays) * 100) : 0;
+  const allowedMakeups = info.makeups;
+  const remainingMakeups = Math.max(0, allowedMakeups - failed);
+  const isOvershoot = failed > allowedMakeups;
+  const isOngoing = future > 0;
+
+  // Financial calc
+  const amount = parseInt(proj.amount) || 50;
+  const roi = info.roi;
+
+  let earnings = 0;
+  if (isOngoing) {
+    // Project still in progress — show potential earnings
+    if (!isOvershoot) {
+      earnings = amount * roi;
+    } else {
+      const penaltyPerDay = (amount * roi) / doneDays;
+      const extra = failed - allowedMakeups;
+      earnings = Math.max(0, amount * roi - penaltyPerDay * extra);
+    }
+  } else {
+    // Cycle completed
+    if (!isOvershoot) {
+      earnings = amount * roi;
+    } else {
+      const penaltyPerDay = (amount * roi) / doneDays;
+      const extra = failed - allowedMakeups;
+      earnings = Math.max(0, amount * roi - penaltyPerDay * extra);
+    }
+  }
+  const returnAmount = amount + earnings;
+
+  return {
+    total, completed, failed, future, progress, doneDays,
+    allowedMakeups, remainingMakeups, isOvershoot, isOngoing,
+    amount, roi, earnings, returnAmount
+  };
+}
+
+// ===== Toggle =====
+function toggleDay(projectId, dateStr) {
+  if (!appData || !appData[projectId]) return;
+  if (dateStr > todayStr()) return;
+
+  const proj = appData[projectId];
+  if (!proj.records) proj.records = {};
+
+  if (proj.records[dateStr] === 'failed') {
+    delete proj.records[dateStr]; // back to default 'completed'
+    showToast('↩️ 恢复为完成');
+  } else {
+    proj.records[dateStr] = 'failed';
+    showToast('❌ 标记为未完成');
+  }
+
+  saveData();
+  renderAll();
+}
+
+// ===== Render =====
+function renderAll() {
+  const container = document.getElementById('appContainer');
+  const emptyState = document.getElementById('emptyState');
+  const legendArea = document.getElementById('legendArea');
+  const footerActions = document.getElementById('footerActions');
+
+  if (!appData) {
+    container.innerHTML = '';
+    emptyState.style.display = 'block';
+    legendArea.style.display = 'none';
+    footerActions.style.display = 'none';
+    updateHeaderStats();
+    return;
+  }
+
+  const hasConfigured = PROJECT_IDS.some(id => appData[id] && appData[id].startDate);
+
+  emptyState.style.display = hasConfigured ? 'none' : 'block';
+  legendArea.style.display = hasConfigured ? 'flex' : 'none';
+  footerActions.style.display = 'block';
+
+  container.innerHTML = '';
+  // Render in order: homework, jumpRope, milk
+  PROJECT_IDS.forEach(id => {
+    container.appendChild(renderProjectCard(id));
+  });
+
+  updateHeaderStats();
+}
+
+function renderProjectCard(id) {
+  const proj = appData[id];
+  const info = PROJECT_INFO[id];
+
+  if (!proj.startDate) {
+    // Unconfigured state
+    const card = document.createElement('div');
+    card.className = 'project-card';
+    card.innerHTML = `
+      <div class="card-unconfigured">
+        <div class="big-emoji">${info.emoji}</div>
+        <p><strong>${info.name}</strong><br>点击下方按钮设置投资计划</p>
+        <button onclick="openSettings('${id}')">⚙️ 立即设置</button>
+      </div>
+    `;
+    return card;
+  }
+
+  const stats = getProjectStats(proj);
+  const durInfo = getDurationInfo(parseInt(proj.duration) || 30);
+  const card = document.createElement('div');
+  card.className = 'project-card';
+
+  // === Header ===
+  const header = document.createElement('div');
+  header.className = 'project-header';
+  header.innerHTML = `
+    <div class="project-title">${info.emoji} ${proj.name}</div>
+    <div class="project-actions">
+      <button class="btn-icon" onclick="openSettings('${id}')" title="设置">⚙️</button>
+    </div>
+  `;
+  card.appendChild(header);
+
+  // === Meta ===
+  const roiPercent = Math.round(durInfo.roi * 100);
+  const endDate = addDays(proj.startDate, (parseInt(proj.duration)||30) - 1);
+  const meta = document.createElement('div');
+  meta.className = 'project-meta';
+  meta.innerHTML = `
+    <div><span class="label">投资</span> <span class="value">¥${proj.amount||50}</span></div>
+    <div><span class="label">时长</span> <span class="value">${proj.duration||30}天</span></div>
+    <div><span class="label">收益率</span> <span class="value" style="color:var(--success);">+${roiPercent}%</span></div>
+    <div><span class="label">周期</span> <span class="value">${proj.startDate}~${endDate}</span></div>
+  `;
+  card.appendChild(meta);
+
+  // === Progress ===
+  const progressDiv = document.createElement('div');
+  progressDiv.className = 'progress-section';
+  let pClass = '';
+  if (stats.progress < 50) pClass = 'danger';
+  else if (stats.progress < 80) pClass = 'warning';
+  progressDiv.innerHTML = `
+    <div class="progress-header">
+      <span>进度</span>
+      <span>${stats.completed}✅ ${stats.failed}❌ / ${stats.doneDays}天 (${stats.progress}%)</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill ${pClass}" style="width:${stats.progress}%"></div></div>
+  `;
+  card.appendChild(progressDiv);
+
+  // === Makeup Status ===
+  const makeupDiv = document.createElement('div');
+  makeupDiv.className = 'makeup-status';
+  let badgeClass = 'ok', badgeText = '';
+  if (stats.isOvershoot) {
+    badgeClass = 'danger';
+    badgeText = `⚠️ 已超补打卡次数（失败${stats.failed}次，允许${stats.allowedMakeups}次）`;
+  } else if (stats.failed > 0) {
+    badgeClass = 'warn';
+    badgeText = `失败${stats.failed}次 · 剩余补打卡${stats.remainingMakeups}次`;
+  } else {
+    badgeText = `✅ 全部完成 · 可补打卡${stats.allowedMakeups}次`;
+  }
+  makeupDiv.innerHTML = `<span class="makeup-badge ${badgeClass}">${badgeText}</span>`;
+  card.appendChild(makeupDiv);
+
+  // === Calendar Grid ===
+  const calSection = document.createElement('div');
+  calSection.className = 'calendar-section';
+  calSection.innerHTML = `<div class="calendar-header">${['一','二','三','四','五','六','日'].map(d => `<span class="weekday">${d}</span>`).join('')}</div>`;
+
+  const grid = document.createElement('div');
+  grid.className = 'calendar-grid';
+
+  const dates = getProjectDates(proj);
+  const today = todayStr();
+
+  if (dates.length > 0) {
+    const firstDate = new Date(dates[0] + 'T00:00:00');
+    let firstDay = firstDate.getDay();
+    firstDay = firstDay === 0 ? 6 : firstDay - 1;
+
+    // Empty padding cells
+    for (let i = 0; i < firstDay; i++) {
+      const e = document.createElement('div');
+      e.className = 'day-cell future';
+      e.style.cssText = 'border-color:transparent;background:transparent;cursor:default;';
+      grid.appendChild(e);
+    }
+
+    dates.forEach(d => {
+      const cell = document.createElement('div');
+      const status = getDayStatus(proj, d);
+      cell.className = `day-cell ${status}`;
+      if (d === today && status !== 'future') cell.classList.add('today');
+
+      const dayNum = new Date(d + 'T00:00:00').getDate();
+      cell.innerHTML = `<span class="day-num">${dayNum}</span><span class="day-status">${
+        status === 'completed' ? '✅' : status === 'failed' ? '❌' : '　'
+      }</span>`;
+
+      if (status !== 'future') {
+        cell.onclick = () => toggleDay(id, d);
+        cell.title = `${d} · 点击切换`;
+      } else {
+        cell.title = `${d}`;
+      }
+      grid.appendChild(cell);
+    });
+  }
+
+  calSection.appendChild(grid);
+  card.appendChild(calSection);
+
+  // === Earnings ===
+  const earnSection = document.createElement('div');
+  earnSection.className = 'earnings-section';
+  const statusText = stats.isOngoing ? '预计回报' : '最终回报';
+  const earningsColor = stats.earnings > 0 ? 'var(--success)' : 'var(--danger)';
+  earnSection.innerHTML = `
+    <div class="earnings-row">
+      <span class="label">本金</span>
+      <span class="value">¥${stats.amount}</span>
+    </div>
+    <div class="earnings-row">
+      <span class="label">收益率</span>
+      <span class="value" style="color:var(--success);">+${roiPercent}%</span>
+    </div>
+    <div class="earnings-row total">
+      <span class="label">${statusText}</span>
+      <span class="value">¥${stats.amount} → ¥${stats.returnAmount}
+        <span style="font-size:12px;font-weight:400;color:${earningsColor};">(+¥${stats.earnings})</span>
+      </span>
+    </div>
+  `;
+  card.appendChild(earnSection);
+
+  // Show cycle end notice if applicable
+  if (stats.future === 0 && stats.doneDays >= (parseInt(proj.duration)||30)) {
+    const notice = document.createElement('div');
+    notice.style.cssText = 'padding:8px 18px 12px;font-size:12px;color:var(--text-secondary);border-top:1px solid var(--border);text-align:center;';
+    notice.textContent = '🏁 本周期已结束，点击 ⚙️ 重新设置开始新周期';
+    card.appendChild(notice);
+  }
+
+  return card;
+}
+
+function updateHeaderStats() {
+  let totalAmt = 0, totalEarn = 0, totalRet = 0;
+  if (appData) {
+    PROJECT_IDS.forEach(id => {
+      const proj = appData[id];
+      if (proj && proj.startDate) {
+        const s = getProjectStats(proj);
+        totalAmt += s.amount;
+        totalEarn += s.earnings;
+        totalRet += s.returnAmount;
+      }
+    });
+  }
+  document.getElementById('totalInvestment').textContent = `¥${totalAmt}`;
+  document.getElementById('totalEarnings').textContent = `+¥${totalEarn}`;
+  document.getElementById('totalReturn').textContent = `¥${totalRet}`;
+}
+
+// ===== Settings =====
+function openSettings(id) {
+  editingId = id;
+  const proj = appData[id];
+  const info = PROJECT_INFO[id];
+
+  document.getElementById('modalTitle').textContent = `⚙️ ${info.emoji} ${proj.name} — 设置`;
+  document.getElementById('editName').value = proj.name || '';
+  document.getElementById('editStartDate').value = proj.startDate || '';
+  document.getElementById('editDuration').value = proj.duration || 30;
+  document.getElementById('editAmount').value = proj.amount || 50;
+  document.getElementById('editCompletedDays').value = proj.completedDays || 0;
+  document.getElementById('editFailedCount').value = proj.failedCount || 0;
+
+  const deleteBtn = document.getElementById('deleteBtn');
+  deleteBtn.style.display = 'inline-block';
+  deleteBtn.onclick = deleteProject;
+
+  document.getElementById('settingsModal').classList.add('active');
+  updateCompletedHint();
+}
+
+function updateCompletedHint() {
+  const startDate = document.getElementById('editStartDate').value;
+  const duration = parseInt(document.getElementById('editDuration').value) || 30;
+  const completed = parseInt(document.getElementById('editCompletedDays').value) || 0;
+  const failed = parseInt(document.getElementById('editFailedCount').value) || 0;
+  const total = completed + failed;
+  const today = todayStr();
+  const ch = document.getElementById('completedHint');
+  const fh = document.getElementById('failedHint');
+
+  if (!startDate) {
+    ch.textContent = '请先选择起始日期';
+    ch.className = 'hint';
+    fh.textContent = '请先选择起始日期';
+    fh.className = 'hint';
+    return;
+  }
+
+  const endDate = addDays(startDate, duration - 1);
+  const daysElapsed = Math.min(duration, dateDiff(startDate, today) + 1);
+
+  ch.textContent = `周期：${startDate} ~ ${endDate}，已过 ${daysElapsed} 天 | 已完成 ${completed} 天 + 未完成 ${failed} 天 = ${total} 天`;
+  ch.className = 'hint';
+
+  if (total > daysElapsed) {
+    fh.textContent = `⚠️ 已完成+未完成（${total}天）超过了已过天数（${daysElapsed}天），请检查`;
+    fh.className = 'hint warn';
+  } else if (total < daysElapsed) {
+    const remaining = daysElapsed - total;
+    fh.textContent = `还有 ${remaining} 天未设置（将显示为完成 ✅），你可设置更多已完成天数`;
+    fh.className = 'hint';
+  } else {
+    fh.textContent = `✅ 所有 ${daysElapsed} 天已设置完毕`;
+    fh.className = 'hint';
+  }
+}
+
+function closeModal() {
+  document.getElementById('settingsModal').classList.remove('active');
+  editingId = null;
+}
+
+function saveProject() {
+  if (!editingId || !appData) return;
+
+  const name = document.getElementById('editName').value.trim();
+  const startDate = document.getElementById('editStartDate').value;
+  const duration = parseInt(document.getElementById('editDuration').value) || 30;
+  const amount = parseInt(document.getElementById('editAmount').value) || 50;
+  const completedDays = parseInt(document.getElementById('editCompletedDays').value) || 0;
+  const failedCount = parseInt(document.getElementById('editFailedCount').value) || 0;
+
+  if (!name) { showToast('请输入项目名称'); return; }
+  if (!startDate) { showToast('请选择起始日期'); return; }
+
+  const daysElapsed = Math.min(duration, dateDiff(startDate, todayStr()) + 1);
+  if (completedDays + failedCount > daysElapsed) {
+    if (!confirm(`已完成(${completedDays})+未完成(${failedCount}) = ${completedDays+failedCount} 天，超过了已过天数 ${daysElapsed} 天，确认保存吗？`)) {
+      return;
+    }
+  }
+
+  const proj = appData[editingId];
+  proj.name = name;
+  proj.startDate = startDate;
+  proj.duration = duration;
+  proj.amount = amount;
+  proj.completedDays = completedDays;
+  proj.failedCount = failedCount;
+
+  rebuildRecordsFromManual(proj);
+  saveData();
+  closeModal();
+  renderAll();
+  showToast('✅ 设置已保存');
+}
+
+function deleteProject() {
+  if (!editingId || !appData) return;
+  const name = appData[editingId].name;
+  if (!confirm(`确定要重置「${name}」的所有数据吗？`)) return;
+
+  appData[editingId] = JSON.parse(JSON.stringify(PROJECT_DEFAULTS[editingId]));
+  saveData();
+  closeModal();
+  renderAll();
+  showToast(`🔄 「${name}」已重置`);
+}
+
+function showAddProjectModal() {
+  const unsetId = PROJECT_IDS.find(id => !appData[id] || !appData[id].startDate);
+  if (!unsetId) {
+    showToast('所有项目已创建，点击卡片上的 ⚙️ 修改设置');
+    return;
+  }
+  openSettings(unsetId);
+}
+
+// ===== Reset =====
+function resetAllData() {
+  if (!confirm('⚠️ 确定要重置所有数据吗？此操作不可撤销！')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  // Also remove old storage key
+  localStorage.removeItem('kids_investment_tracker');
+  appData = null;
+  renderAll();
+  showToast('已重置所有数据');
+}
+
+// ===== Toast =====
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ===== Init =====
+function init() {
+  const has = loadData();
+  if (!has) {
+    // First visit: create empty project templates
+    appData = JSON.parse(JSON.stringify(PROJECT_DEFAULTS));
+    saveData();
+  }
+  renderAll();
+}
+
+init();
+</script>
+</body>
+</html>
