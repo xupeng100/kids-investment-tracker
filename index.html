@@ -245,6 +245,61 @@
   .modal .btn-danger { background: var(--danger-bg); color: #9b2c2c; display: none; }
   .modal .btn-danger:hover { background: #fed7d7; }
 
+  /* ===== Sync Panel ===== */
+  .sync-panel {
+    max-width: 1200px; margin: 14px auto 0;
+    background: var(--card-bg); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .sync-header {
+    padding: 12px 18px;
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; user-select: none;
+  }
+  .sync-header:hover { background: #fafafa; }
+  .sync-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .sync-status { font-size: 12px; color: var(--text-secondary); }
+  .sync-status.ok { color: var(--success); font-weight: 600; }
+  .sync-status.err { color: var(--danger); font-weight: 600; }
+  .sync-body { padding: 0 18px 14px; display: none; }
+  .sync-body.open { display: block; }
+  .sync-body .form-group { margin-bottom: 10px; }
+  .sync-body .form-group label {
+    display: block; font-size: 12px; font-weight: 600;
+    color: var(--text-secondary); margin-bottom: 3px;
+  }
+  .sync-body .form-group input {
+    width: 100%; padding: 8px 10px;
+    border: 1px solid var(--border); border-radius: 6px;
+    font-size: 13px; font-family: var(--font); background: white;
+  }
+  .sync-body .form-group input:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-light);
+  }
+  .sync-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .sync-actions button {
+    padding: 7px 16px; border: none; border-radius: 6px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: var(--font); transition: all 0.15s;
+  }
+  .sync-btn-primary { background: var(--primary); color: white; }
+  .sync-btn-primary:hover { background: #3182ce; }
+  .sync-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .sync-btn-secondary { background: var(--bg); color: var(--text); }
+  .sync-btn-secondary:hover { background: var(--border); }
+  .sync-btn-danger { background: var(--danger-bg); color: #9b2c2c; }
+  .sync-btn-danger:hover { background: #fed7d7; }
+  .sync-hint { font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.5; }
+  .sync-spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white; border-radius: 50%;
+    animation: spin 0.6s linear infinite; vertical-align: middle;
+  }
+  .sync-spinner.dark { border-color: rgba(0,0,0,0.15); border-top-color: var(--primary); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   /* ===== Empty & Legend ===== */
   .empty-state {
     grid-column: 1 / -1; text-align: center;
@@ -356,6 +411,31 @@
 <div class="footer-actions" id="footerActions" style="display:none;">
   <button onclick="showAddProjectModal()" style="background:var(--primary);color:white;border:none;padding:8px 24px;font-weight:600;">➕ 添加项目</button>
   <button onclick="resetAllData()" style="margin-left:8px;">🗑️ 重置所有数据</button>
+</div>
+
+<!-- Cloud Sync Panel -->
+<div class="sync-panel" id="syncPanel">
+  <div class="sync-header" onclick="toggleSyncPanel()">
+    <div class="sync-title">☁️ 云同步</div>
+    <div class="sync-status" id="syncStatus">未连接</div>
+  </div>
+  <div class="sync-body" id="syncBody">
+    <div class="form-group">
+      <label>GitHub Token（用于跨设备同步数据到云端）</label>
+      <input type="password" id="syncToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+    </div>
+    <div class="sync-hint">
+      Token 仅保存在你当前浏览器的本地存储中，不会上传到其他服务器。<br>
+      需要 <strong>repo</strong> 权限。可在 GitHub → Settings → Developer settings → Personal access tokens 获取。
+    </div>
+    <div class="sync-actions">
+      <button class="sync-btn-primary" id="syncSaveBtn" onclick="saveSyncToken()">💾 保存并连接</button>
+      <button class="sync-btn-secondary" id="syncPushBtn" onclick="pushToCloud()" disabled>📤 手动上传到云端</button>
+      <button class="sync-btn-secondary" id="syncPullBtn" onclick="pullFromCloud()" disabled>📥 从云端下载</button>
+      <button class="sync-btn-danger" id="syncDisconnectBtn" onclick="disconnectSync()" style="display:none;">断开连接</button>
+    </div>
+    <div class="sync-hint" id="syncLog" style="color:var(--success);margin-top:6px;"></div>
+  </div>
 </div>
 
 <!-- Settings Modal -->
@@ -935,6 +1015,273 @@ function resetAllData() {
   showToast('已重置所有数据');
 }
 
+// ===== Cloud Sync =====
+const SYNC_OWNER = 'xupeng100';
+const SYNC_REPO = 'kids-investment-tracker';
+const SYNC_PATH = '_data/sync.json';
+const SYNC_TOKEN_KEY = 'kids_sync_github_token';
+const SYNC_BRANCH = 'main';
+
+function getSyncToken() {
+  try { return localStorage.getItem(SYNC_TOKEN_KEY) || ''; }
+  catch(e) { return ''; }
+}
+
+function setSyncToken(token) {
+  try { localStorage.setItem(SYNC_TOKEN_KEY, token); }
+  catch(e) {}
+}
+
+function toggleSyncPanel() {
+  const body = document.getElementById('syncBody');
+  body.classList.toggle('open');
+}
+
+function updateSyncUI(status, msg) {
+  const el = document.getElementById('syncStatus');
+  const log = document.getElementById('syncLog');
+  const pushBtn = document.getElementById('syncPushBtn');
+  const pullBtn = document.getElementById('syncPullBtn');
+  const saveBtn = document.getElementById('syncSaveBtn');
+  const disconnectBtn = document.getElementById('syncDisconnectBtn');
+
+  el.className = 'sync-status';
+  if (status === 'ok') {
+    el.classList.add('ok');
+    el.textContent = '☁️ 已连接';
+    pushBtn.disabled = false;
+    pullBtn.disabled = false;
+    disconnectBtn.style.display = 'inline-block';
+    saveBtn.textContent = '🔄 重新连接';
+  } else if (status === 'err') {
+    el.classList.add('err');
+    el.textContent = '⚠️ ' + (msg || '连接失败');
+    pushBtn.disabled = true;
+    pullBtn.disabled = true;
+  } else {
+    el.textContent = '未连接';
+    pushBtn.disabled = true;
+    pullBtn.disabled = true;
+    disconnectBtn.style.display = 'none';
+    saveBtn.textContent = '💾 保存并连接';
+  }
+  if (msg) {
+    log.textContent = msg;
+    log.style.color = status === 'ok' ? 'var(--success)' : 'var(--danger)';
+  }
+}
+
+function initSyncUI() {
+  const token = getSyncToken();
+  document.getElementById('syncToken').value = token;
+  if (token) {
+    updateSyncUI('ok', 'Token 已保存，可同步云端数据');
+  }
+}
+
+function saveSyncToken() {
+  const token = document.getElementById('syncToken').value.trim();
+  if (!token) {
+    updateSyncUI('err', '请输入 GitHub Token');
+    return;
+  }
+  if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+    if (!confirm('Token 格式不太对，通常以 ghp_ 或 github_pat_ 开头，确定要保存吗？')) return;
+  }
+
+  setSyncToken(token);
+  showToast('Token 已保存');
+
+  // Test the token by trying to read the sync file
+  testSyncConnection(token);
+}
+
+async function testSyncConnection(token) {
+  const saveBtn = document.getElementById('syncSaveBtn');
+  saveBtn.innerHTML = '<span class="sync-spinner"></span> 验证中...';
+  saveBtn.disabled = true;
+
+  try {
+    // Try to read the file (might not exist yet, that's ok)
+    const resp = await fetch(
+      `https://api.github.com/repos/${SYNC_OWNER}/${SYNC_REPO}/contents/${SYNC_PATH}`,
+      { headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' } }
+    );
+
+    if (resp.ok || resp.status === 404) {
+      updateSyncUI('ok', '✅ Token 验证成功，云端连接已建立');
+      showToast('☁️ 云端已连接');
+    } else if (resp.status === 401) {
+      updateSyncUI('err', 'Token 无效，请检查后重试');
+      showToast('❌ Token 无效');
+    } else if (resp.status === 403) {
+      updateSyncUI('err', 'Token 权限不足，需要 repo 权限');
+      showToast('❌ 权限不足');
+    } else {
+      updateSyncUI('err', `连接失败 (HTTP ${resp.status})`);
+    }
+  } catch(e) {
+    updateSyncUI('err', '网络错误，请检查网络连接');
+  }
+
+  saveBtn.innerHTML = '💾 保存并连接';
+  saveBtn.disabled = false;
+}
+
+async function loadFromCloud() {
+  const token = getSyncToken();
+  if (!token) return null;
+  if (!navigator.onLine) return null;
+
+  try {
+    // Try raw URL first (no auth needed for public repo)
+    const rawResp = await fetch(
+      `https://raw.githubusercontent.com/${SYNC_OWNER}/${SYNC_REPO}/${SYNC_BRANCH}/${SYNC_PATH}`
+    );
+    if (rawResp.ok) {
+      const data = await rawResp.json();
+      return data;
+    }
+    // Fallback to API
+    const apiResp = await fetch(
+      `https://api.github.com/repos/${SYNC_OWNER}/${SYNC_REPO}/contents/${SYNC_PATH}`,
+      { headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' } }
+    );
+    if (apiResp.ok) {
+      const result = await apiResp.json();
+      const content = atob(result.content);
+      return JSON.parse(content);
+    }
+    return null;
+  } catch(e) {
+    console.warn('Cloud load error:', e);
+    return null;
+  }
+}
+
+async function saveToCloud() {
+  const token = getSyncToken();
+  if (!token) { showToast('请先设置 GitHub Token'); return false; }
+  if (!navigator.onLine) { showToast('⛔ 当前无网络连接'); return false; }
+  if (!appData) { showToast('没有数据可同步'); return false; }
+
+  showToast('☁️ 正在上传到云端...');
+
+  try {
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(appData, null, 2))));
+
+    // Get current file sha if it exists
+    let sha = null;
+    const getResp = await fetch(
+      `https://api.github.com/repos/${SYNC_OWNER}/${SYNC_REPO}/contents/${SYNC_PATH}`,
+      { headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' } }
+    );
+    if (getResp.ok) {
+      const existing = await getResp.json();
+      sha = existing.sha;
+    }
+
+    // Create or update file
+    const body = {
+      message: 'sync: 更新打卡数据 ' + todayStr(),
+      content,
+      branch: SYNC_BRANCH
+    };
+    if (sha) body.sha = sha;
+
+    const putResp = await fetch(
+      `https://api.github.com/repos/${SYNC_OWNER}/${SYNC_REPO}/contents/${SYNC_PATH}`,
+      {
+        method: 'PUT',
+        headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }
+    );
+
+    if (putResp.ok) {
+      showToast('✅ 数据已上传到云端');
+      updateSyncUI('ok', '✅ 上次同步：' + new Date().toLocaleString());
+      return true;
+    } else {
+      const err = await putResp.json();
+      showToast(`❌ 上传失败: ${err.message || putResp.status}`);
+      return false;
+    }
+  } catch(e) {
+    showToast('❌ 网络错误，上传失败');
+    return false;
+  }
+}
+
+async function pushToCloud() {
+  const ok = await saveToCloud();
+  if (ok) {
+    updateSyncUI('ok', '✅ 上次上传：' + new Date().toLocaleString());
+  }
+}
+
+async function pullFromCloud() {
+  const token = getSyncToken();
+  if (!token) { showToast('请先设置 GitHub Token'); return; }
+  if (!navigator.onLine) { showToast('⛔ 当前无网络连接'); return; }
+
+  showToast('☁️ 正在从云端下载...');
+
+  const data = await loadFromCloud();
+  if (!data) {
+    showToast('云端暂无数据，请先上传');
+    return;
+  }
+
+  // Merge cloud data into local
+  // Only overwrite if cloud data is newer or user confirms
+  const localStr = localStorage.getItem(STORAGE_KEY);
+  const cloudStr = JSON.stringify(data);
+
+  if (localStr === cloudStr) {
+    showToast('本地和云端数据一致，无需下载');
+    return;
+  }
+
+  if (!confirm('将用云端数据覆盖本地数据，确认吗？')) return;
+
+  try {
+    appData = data;
+    // Ensure all project keys exist
+    PROJECT_IDS.forEach(id => {
+      if (!appData[id]) appData[id] = JSON.parse(JSON.stringify(PROJECT_DEFAULTS[id]));
+      if (!appData[id].records) appData[id].records = {};
+    });
+    saveData();
+    renderAll();
+    updateSyncUI('ok', '✅ 上次下载：' + new Date().toLocaleString());
+    showToast('✅ 云端数据已下载并覆盖本地');
+  } catch(e) {
+    showToast('❌ 数据解析失败');
+  }
+}
+
+function disconnectSync() {
+  if (!confirm('确定要断开云同步连接吗？Token 将被清除。')) return;
+  localStorage.removeItem(SYNC_TOKEN_KEY);
+  document.getElementById('syncToken').value = '';
+  updateSyncUI('', '已断开连接');
+  showToast('已断开云同步');
+}
+
+// Auto-sync: after saving data locally, also push to cloud
+const _origSaveData = saveData;
+saveData = function() {
+  _origSaveData.call(this);
+  // Auto sync to cloud after saving (debounced)
+  if (getSyncToken() && navigator.onLine) {
+    clearTimeout(window._syncTimer);
+    window._syncTimer = setTimeout(() => {
+      saveToCloud().catch(() => {});
+    }, 3000);
+  }
+};
+
 // ===== Toast =====
 let toastTimer = null;
 function showToast(msg) {
@@ -946,14 +1293,44 @@ function showToast(msg) {
 }
 
 // ===== Init =====
-function init() {
+async function init() {
   const has = loadData();
   if (!has) {
-    // First visit: create empty project templates
-    appData = JSON.parse(JSON.stringify(PROJECT_DEFAULTS));
-    saveData();
+    // First visit: try cloud first, then create empty templates
+    const cloudData = await loadFromCloud();
+    if (cloudData) {
+      appData = cloudData;
+      PROJECT_IDS.forEach(id => {
+        if (!appData[id]) appData[id] = JSON.parse(JSON.stringify(PROJECT_DEFAULTS[id]));
+        if (!appData[id].records) appData[id].records = {};
+      });
+      saveData();
+      showToast('☁️ 已从云端加载数据');
+    } else {
+      appData = JSON.parse(JSON.stringify(PROJECT_DEFAULTS));
+      saveData();
+    }
+  } else {
+    // Has local data, try to update from cloud
+    const token = getSyncToken();
+    if (token && navigator.onLine) {
+      loadFromCloud().then(cloudData => {
+        if (cloudData) {
+          // Only use cloud if it has more data (not empty defaults)
+          const hasCloudConfig = PROJECT_IDS.some(id => cloudData[id] && cloudData[id].startDate);
+          const hasLocalConfig = PROJECT_IDS.some(id => appData[id] && appData[id].startDate);
+          if (hasCloudConfig && !hasLocalConfig) {
+            appData = cloudData;
+            saveData();
+            renderAll();
+            showToast('☁️ 已从云端同步数据');
+          }
+        }
+      }).catch(() => {});
+    }
   }
   renderAll();
+  initSyncUI();
 }
 
 init();
