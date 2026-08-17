@@ -3,8 +3,8 @@
     "name": "先写作业",
     "amount": 50,
     "duration": 30,
-    "startDate": "2026-07-11",
-    "completedDays": 13,
+    "startDate": "2026-08-11",
+    "completedDays": 6,
     "failedCount": 1,
     "records": {
       "2026-07-12": "completed",
@@ -19,7 +19,13 @@
       "2026-07-21": "completed",
       "2026-07-22": "completed",
       "2026-07-23": "failed",
-      "2026-07-11": "failed"
+      "2026-08-11": "failed",
+      "2026-08-12": "completed",
+      "2026-08-13": "completed",
+      "2026-08-14": "completed",
+      "2026-08-15": "completed",
+      "2026-08-16": "completed",
+      "2026-08-17": "completed"
     }
   },
   "jumpRope": {
